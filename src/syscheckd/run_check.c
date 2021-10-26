@@ -93,7 +93,6 @@ void fim_send_sync_msg(const char *location, const char * msg) {
     }
 }
 
-
 // Send a message related to syscheck change/addition
 void send_syscheck_msg(const cJSON *_msg) {
     char *msg = cJSON_PrintUnformatted(_msg);
