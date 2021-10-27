@@ -571,6 +571,7 @@ int fim_db_process_get_query(fdb_t* fim_sql,
 
     for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++)
     {
+/*
 #ifndef WIN32
         fim_entry* entry = fim_db_decode_full_row(fim_sql->stmt[index]);
 #else
@@ -579,6 +580,7 @@ int fim_db_process_get_query(fdb_t* fim_sql,
 #endif
         callback(fim_sql, entry, storage, arg);
         free_entry(entry);
+*/
     }
 
     w_mutex_unlock(&fim_sql->mutex);

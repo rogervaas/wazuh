@@ -577,15 +577,6 @@ int fim_db_remove_wildcard_entry(fdb_t* fim_sql,
                                  directory_t* configuration);
 
 /**
- * @brief Decodes a row from the database to be saved in a fim_entry structure.
- *
- * @param stmt The statement to be decoded.
- *
- * @return fim_entry* The filled structure.
- */
-fim_entry* fim_db_decode_full_row(sqlite3_stmt* stmt);
-
-/**
  * @brief Get count of all inodes in file_entry table.
  *
  * @param fim_sql FIM database struct.
