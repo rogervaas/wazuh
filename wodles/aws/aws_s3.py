@@ -2898,22 +2898,28 @@ class AWSCloudWatchLogs(AWSService):
                                                   db_values['start_time'] if db_values else None,
                                                   db_values['end_time'] if db_values else None), 2)
                     result_before = None
-                    start_time = self.default_date_millis
+                    start_time = self.only_logs_after_millis if self.only_logs_after_millis else self.default_date_millis
+                    end_time = None
                     token = None
 
-                    if db_values is not None and db_values['end_time'] is not None:
-                        if self.only_logs_after_millis is not None and \
-                                db_values['end_time'] < self.only_logs_after_millis:
-                            start_time = self.only_logs_after_millis
-                        else:
-                            start_time = db_values['end_time'] + 1
-                            token = db_values['token']
+                    if db_values:
+                        # The value has been set to a date earlier in the past than the first recorded, and therefore
+                        # the logs in between should be fetched
+                        if db_values['start_time'] and db_values['start_time'] > start_time:
+                            result_before = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
+                                                                         token=None, start_time=start_time,
+                                                                         end_time=db_values['start_time'])
 
-                    elif self.only_logs_after_millis is not None:
-                        start_time = self.only_logs_after_millis
+                        if db_values['end_time']:
+                            if self.only_logs_after_millis is not None and \
+                                    db_values['end_time'] < self.only_logs_after_millis:
+                                start_time = self.only_logs_after_millis
+                            else:
+                                start_time = db_values['end_time'] + 1
+                                token = db_values['token']
 
                     result_after = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream, token=token,
-                                                                start_time=start_time, end_time=None)
+                                                                start_time=start_time, end_time=end_time)
 
                     db_values = self.update_values(values=db_values, result_before=result_before,
                                                    result_after=result_after)
