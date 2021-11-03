@@ -693,7 +693,7 @@ class AWSBucket(WazuhIntegration):
                                                         aws_region=aws_region,
                                                         prefix=self.prefix))
             try:
-                last_key = query_last_key.fetchone()[0]
+                filter_marker = query_last_key.fetchone()[0]
             except (TypeError, IndexError) as e:
                 # if DB is empty for a region
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id) if self.only_logs_after \
@@ -707,13 +707,9 @@ class AWSBucket(WazuhIntegration):
 
         # if nextContinuationToken is not used for processing logs in a bucket
         if not iterating:
-            if filter_marker:
-                filter_args['StartAfter'] = filter_marker
-                debug(f'+++ Marker: {filter_marker}', 2)
-            else:
-                filter_args['StartAfter'] = last_key if self.only_logs_after is None or \
-                    (ol_marker := self.marker_only_logs_after(aws_region, aws_account_id)) < last_key else ol_marker
-                debug(f'+++ Marker: {last_key}', 2)
+            filter_args['StartAfter'] = filter_marker if not self.only_logs_after or \
+                (ol_marker := self.marker_only_logs_after(aws_region, aws_account_id)) < filter_marker else ol_marker
+            debug(f'+++ Marker: {filter_args.get("StartAfter")}', 2)
 
         return filter_args
 
@@ -1185,10 +1181,10 @@ class AWSConfigBucket(AWSLogsBucket):
                                                                aws_region=aws_region,
                                                                created_date=created_date))
             try:
-                last_key = query_last_key_of_day.fetchone()[0]
+                filter_marker = query_last_key_of_day.fetchone()[0]
             except (TypeError, IndexError) as e:
                 # if DB is empty for a region
-                last_key = self.get_full_prefix(aws_account_id, aws_region) + date
+                filter_marker = self.get_full_prefix(aws_account_id, aws_region) + date
 
         # for getting only logs of the current date
         config_prefix = self.get_full_prefix(aws_account_id, aws_region) + date + '/'
@@ -1201,13 +1197,9 @@ class AWSConfigBucket(AWSLogsBucket):
 
         # if nextContinuationToken is not used for processing logs in a bucket
         if not iterating:
-            if filter_marker:
-                filter_args['StartAfter'] = filter_marker
-                debug(f'+++ Marker: {filter_marker}', 2)
-            else:
-                filter_args['StartAfter'] = last_key if self.only_logs_after is None or \
-                    (ol_marker := self.marker_only_logs_after(aws_region, aws_account_id)) < last_key else ol_marker
-                debug(f'+++ Marker: {last_key}', 2)
+            filter_args['StartAfter'] = filter_marker if self.only_logs_after is None or \
+                (ol_marker := self.marker_only_logs_after(aws_region, aws_account_id)) < filter_marker else ol_marker
+            debug(f'+++ Marker: {filter_args.get("StartAfter")}', 2)
 
         return filter_args
 
@@ -1670,10 +1662,10 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                                                flow_log_id=flow_log_id,
                                                                created_date=int(date.replace('/', ''))))
             try:
-                last_key = query_last_key_of_day.fetchone()[0]
+                filter_marker = query_last_key_of_day.fetchone()[0]
             except (TypeError, IndexError) as e:
                 # if DB is empty for a region
-                last_key = self.get_full_prefix(aws_account_id, aws_region) + date
+                filter_marker = self.get_full_prefix(aws_account_id, aws_region) + date
 
         vpc_prefix = self.get_vpc_prefix(aws_account_id, aws_region, date, flow_log_id)
         filter_args = {
@@ -1684,13 +1676,9 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         # if nextContinuationToken is not used for processing logs in a bucket
         if not iterating:
-            if filter_marker:
-                filter_args['StartAfter'] = filter_marker
-                debug(f'+++ Marker: {filter_marker}', 2)
-            else:
-                filter_args['StartAfter'] = last_key if self.only_logs_after is None or \
-                    (ol_marker := self.marker_only_logs_after(aws_region, aws_account_id)) < last_key else ol_marker
-                debug(f'+++ Marker: {last_key}', 2)
+            filter_args['StartAfter'] = filter_marker if self.only_logs_after is None or \
+                (ol_marker := self.marker_only_logs_after(aws_region, aws_account_id)) < filter_marker else ol_marker
+            debug(f'+++ Marker: {filter_args.get("StartAfter")}', 2)
 
         return filter_args
 
@@ -2059,7 +2047,6 @@ class AWSCustomBucket(AWSBucket):
 
     def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter=''):
         filter_marker = ''
-        last_key = ''
         if self.reparse:
             if self.only_logs_after:
                 filter_marker = self.marker_only_logs_after(aws_account_id, aws_region)
@@ -2085,7 +2072,7 @@ class AWSCustomBucket(AWSBucket):
                                                         aws_account_id=self.aws_account_id,
                                                         prefix=self.prefix))
             try:
-                last_key = query_last_key.fetchone()[0]
+                filter_marker = query_last_key.fetchone()[0]
             except (TypeError, IndexError) as e:
                 # if DB is empty for a service
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id) if self.only_logs_after \
@@ -2099,18 +2086,16 @@ class AWSCustomBucket(AWSBucket):
 
         # if nextContinuationToken is not used for processing logs in a bucket
         if not iterating:
-            if filter_marker:
-                filter_args['StartAfter'] = filter_marker
-            else:
-                filter_args['StartAfter'] = last_key if not self.only_logs_after or \
-                    (ol_marker := self.marker_only_logs_after(aws_region, aws_account_id)) < last_key else ol_marker
+            filter_args['StartAfter'] = filter_marker if not self.only_logs_after or \
+                (ol_marker := self.marker_only_logs_after(aws_region, aws_account_id)) < filter_marker else ol_marker
+            debug(f"+++ Marker: {filter_args.get('StartAfter')}", 2)
+
 
         if filter_args.get('StartAfter'):
             if custom_delimiter:
                 prefix_len = len(filter_args.get('Prefix'))
                 filter_args['StartAfter'] = filter_args.get('StartAfter')[:prefix_len] + \
                                             filter_args.get('StartAfter')[prefix_len:].replace('/', custom_delimiter)
-            debug(f"+++ Marker: {filter_args.get('StartAfter')}", 2)
 
         return filter_args
 
