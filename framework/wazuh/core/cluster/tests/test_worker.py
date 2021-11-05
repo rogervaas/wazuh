@@ -19,9 +19,6 @@ with patch('wazuh.core.common.wazuh_uid'):
         import wazuh.rbac.decorators
 
         del sys.modules['wazuh.rbac.orm']
-        from wazuh.tests.util import RBAC_bypasser
-
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.core.cluster import client, worker, common
         from wazuh.core import common as core_common
@@ -296,7 +293,7 @@ async def test_sync_wazuh_db_sync_ok(json_dumps_mock, time_mock):
     time_mock.side_effect = None
     with patch.object(logging.getLogger("wazuh"), "info") as logger_info_mock:
         assert await sync_wazuh_db.sync(10) is True
-        logger_info_mock.assert_called_once_with(f"Finished in -10.000000s (0 chunks sent).")
+        logger_info_mock.assert_called_once_with(f"Finished in -10.000s (0 chunks sent).")
 
     time_mock.assert_any_call()
 
@@ -1086,7 +1083,7 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                                     "missing": {
                                         "filename1": {"merged": None, "cluster_item_key": "cluster_item_key"}},
                                     "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path")
-                            basename_mock.assert_has_calls([call('filename1'), call('filename1')])
+                            basename_mock.assert_not_called()
                             os_remove_mock.assert_any_call("queue/agent-groups/")
                             logger_error_mock.assert_not_called()
                             logger_debug_mock.assert_has_calls(
@@ -1097,21 +1094,15 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                                  call("Processing file filename1"),
                                  call("Remove file: 'filename3'")])
                             path_join_mock.assert_has_calls([call(core_common.wazuh_path, 'filename1'),
-                                                             call('/zip/path', 'filename1'),
-                                                             call(core_common.wazuh_path, 'etc',
-                                                                  'client.keys'),
                                                              call(core_common.wazuh_path, 'name'),
                                                              call(core_common.wazuh_path, 'filename1'),
-                                                             call('/zip/path', 'filename1'),
-                                                             call(core_common.wazuh_path, 'etc',
-                                                                  'client.keys'),
                                                              call('/zip/path', 'filename1'),
                                                              call(core_common.wazuh_path, 'filename3')])
                             wazuh_uid_mock.assert_called_with()
                             wazuh_gid_mock.assert_called_with()
                             mkdir_with_mode_mock.assert_any_call("queue/agent-groups")
                             assert safe_move_mock.call_count == 2
-                            assert open_mock.call_count == 5
+                            assert open_mock.call_count == 1
                             path_exists_mock.assert_called_once()
 
                             # Reset all mocks
