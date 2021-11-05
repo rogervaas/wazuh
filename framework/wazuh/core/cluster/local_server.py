@@ -290,7 +290,8 @@ class LocalServerHandlerMaster(LocalServerHandler):
 
         """
         return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes)),
-                                 default=lambda o: "n/a" if isinstance(o, datetime) and o == datetime.fromtimestamp(0)
+                                 default=lambda o: "n/a" if isinstance(o, datetime) and o ==
+                                 datetime.utcfromtimestamp(0)
                                  else (o.__str__() if isinstance(o, datetime) else None)).encode()
 
     def send_file_request(self, path, node_name):
@@ -456,8 +457,9 @@ class LocalServerHandlerWorker(LocalServerHandler):
         future : asyncio.Future object
             Request result.
         """
-        send_res = asyncio.create_task(self.send_request(command=b'dapi_res' if in_command == b'dapi' else b'control_res',
-                                                         data=future.result()))
+        send_res = asyncio.create_task(
+            self.send_request(command=b'dapi_res' if in_command == b'dapi' else b'control_res',
+                              data=future.result()))
         send_res.add_done_callback(self.send_res_callback)
 
     def send_file_request(self, path, node_name):

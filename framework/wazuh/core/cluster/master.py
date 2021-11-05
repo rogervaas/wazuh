@@ -156,7 +156,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.extra_valid_requested = False
 
         # Sync status variables. Used in cluster_control -i and GET/cluster/healthcheck.
-        default_date = datetime.fromtimestamp(0)
+        default_date = datetime.utcfromtimestamp(0)
         self.integrity_check_status = {'date_start_master': default_date, 'date_end_master': default_date}
         self.integrity_sync_status = {'date_start_master': default_date, 'tmp_date_start_master': default_date,
                                       'date_end_master': default_date, 'total_extra_valid': 0,
@@ -231,7 +231,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         elif command == b'get_health':
             cmd, res = self.get_health(json.loads(data))
             return cmd, json.dumps(res,
-                                   default=lambda o: "n/a" if isinstance(o, datetime) and o == datetime.fromtimestamp(0)
+                                   default=lambda o: "n/a" if isinstance(o,
+                                                                         datetime) and o == datetime.utcfromtimestamp(0)
                                    else (o.__str__() if isinstance(o, datetime) else None)
                                    ).encode()
         elif command == b'sendsync':
@@ -607,7 +608,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         await self.sync_worker_files(task_id, received_file, logger)
         self.integrity_sync_status['date_end_master'] = datetime.now()
         logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
-                                                   self.integrity_sync_status['tmp_date_start_master']).total_seconds()))
+                                                   self.integrity_sync_status[
+                                                       'tmp_date_start_master']).total_seconds()))
         self.integrity_sync_status['date_start_master'] = \
             self.integrity_sync_status['tmp_date_start_master'].strftime(decimals_date_format)
         self.integrity_sync_status['date_end_master'] = \
@@ -992,7 +994,7 @@ class Master(server.AbstractServer):
         # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
             workers_info[node_name]["info"]["n_active_agents"] = \
-            Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name})['totalItems']
+                Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name})['totalItems']
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(
                     datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']
