@@ -23,6 +23,7 @@
 #   13 - Unexpected error sending message to Wazuh
 #   14 - Empty bucket
 #   15 - Invalid endpoint URL
+#   16 - Invalid key format
 
 import argparse
 import signal
@@ -1090,6 +1091,8 @@ class AWSConfigBucket(AWSLogsBucket):
                                                 ORDER BY
                                                     log_key ASC
                                                 LIMIT 1;"""
+        self._leading_zero_regex = re.compile(r'/(0)(?P<num>\d)')
+        self._extract_date_regex = re.compile(r'\d{4}/\d{1,2}/\d{1,2}')
 
     def get_days_since_today(self, date):
         date = datetime.strptime(date, "%Y%m%d")
@@ -1151,6 +1154,75 @@ class AWSConfigBucket(AWSLogsBucket):
 
         return datetime.strftime(aux, '%Y%m%d')
 
+    def _remove_padding_zeros_from_marker(self, marker: str) -> str:
+        """Removes the leading zeros from the month and day of a given marker.
+
+        For example, 'AWSLogs/123456789012/Config/us-east-1/2020/01/06' would become
+        'AWSLogs/123456789012/Config/us-east-1/2020/1/6'.
+
+        Parameters
+        ----------
+        marker : str
+            The marker which may include a date with leading zeros as part of the month and the day.
+
+        Returns
+        -------
+        str
+            Marker without padding zeros in the date.
+        """
+        try:
+            date = self._extract_date_regex.search(marker).group(0)
+            # We can't call re.sub directly on the marker because the AWS account ID could start with a 0 too
+            parsed_date = re.sub(self._leading_zero_regex, r'/\g<num>', date)
+            return marker.replace(date, parsed_date)
+        except AttributeError:
+            print(f"ERROR: There was an error while trying to extract a date from the marker '{marker}'")
+            sys.exit(16)
+
+    def marker_only_logs_after(self, aws_region: str, aws_account_id: str) -> str:
+        """Returns a marker using the only_logs_after date to pass it as a filter to the list_objects_v2 method.
+
+        This method removes the leading zeroes for the month and the day to comply with the config buckets folder
+        structure.
+
+        Parameters
+        ----------
+        aws_region : str
+            Region where the bucket is located.
+        aws_account_id : str
+            Account ID that's being used to access the bucket.
+
+        Returns
+        -------
+        str
+            Marker generated using the only_logs_after value.
+        """
+        return self._remove_padding_zeros_from_marker(AWSBucket.marker_only_logs_after(self, aws_region,
+                                                                                       aws_account_id))
+
+    def marker_custom_date(self, aws_region: str, aws_account_id: str, date: datetime) -> str:
+        """Returns a marker using the specified date to pass it as a filter to the list_objects_v2 method.
+
+        This method removes the leading zeroes for the month and the day to comply with the config buckets folder
+        structure.
+
+        Parameters
+        ----------
+        aws_region : str
+            Region where the bucket is located.
+        aws_account_id : str
+            Account ID that's being used to access the bucket.
+        date : datetime
+            Date that will be used to generate the marker.
+
+        Returns
+        -------
+        str
+            Marker generated using the specified date.
+        """
+        return self._remove_padding_zeros_from_marker(AWSBucket.marker_custom_date(self, aws_region, aws_account_id,
+                                                                                   date))
+
     def build_s3_filter_args(self, aws_account_id, aws_region, date, iterating=False):
         filter_marker = ''
         if self.reparse:
@@ -1197,9 +1269,19 @@ class AWSConfigBucket(AWSLogsBucket):
 
         # if nextContinuationToken is not used for processing logs in a bucket
         if not iterating:
-            filter_args['StartAfter'] = filter_marker if self.only_logs_after is None or \
-                (ol_marker := self.marker_only_logs_after(aws_region, aws_account_id)) < filter_marker else ol_marker
-            debug(f'+++ Marker: {filter_args.get("StartAfter")}', 2)
+            try:
+                extracted_date = self._extract_date_regex.search(filter_marker).group(0)
+                filter_marker_date = datetime.strptime(extracted_date, '%Y/%m/%d')
+            except AttributeError:
+                print(f"ERROR: There was an error while trying to extract a date from the file key '{filter_marker}'")
+                sys.exit(16)
+            else:
+                if not self.only_logs_after or self.only_logs_after < filter_marker_date:
+                    filter_args['StartAfter'] = filter_marker
+                else:
+                    filter_args['StartAfter'] = self.marker_only_logs_after(aws_region, aws_account_id)
+
+                debug(f'+++ Marker: {filter_args.get("StartAfter")}', 2)
 
         return filter_args
 
