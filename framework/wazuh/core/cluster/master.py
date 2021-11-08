@@ -519,7 +519,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Agent-info sync']
         logger.info(f"Starting")
-        date_start_master = datetime.now()
+        date_start_master = datetime.utcnow()
         wdb_conn = WazuhDBConnection()
         result = {'updated_chunks': 0, 'error_messages': list()}
 
@@ -553,7 +553,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Send result to worker
         response = await self.send_request(command=b'syn_m_a_e', data=json.dumps(result).encode())
-        date_end_master = datetime.now()
+        date_end_master = datetime.utcnow()
         self.sync_agent_info_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
                                             'date_end_master': date_end_master.strftime(decimals_date_format),
                                             'n_synced_chunks': result['updated_chunks']})
@@ -606,7 +606,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity sync']
         await self.sync_worker_files(task_id, received_file, logger)
-        self.integrity_sync_status['date_end_master'] = datetime.now()
+        self.integrity_sync_status['date_end_master'] = datetime.utcnow()
         logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
                                                    self.integrity_sync_status[
                                                        'tmp_date_start_master']).total_seconds()))
@@ -645,7 +645,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         logger = self.task_loggers['Integrity check']
-        date_start_master = datetime.now()
+        date_start_master = datetime.utcnow()
 
         logger.debug("Waiting to receive zip file from worker.")
         await asyncio.wait_for(received_file.wait(),
@@ -668,10 +668,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         worker_files_ko, counts = wazuh.core.cluster.cluster.compare_files(self.server.integrity_control,
                                                                            files_metadata, self.name)
 
-        total_time = (datetime.now() - date_start_master).total_seconds()
+        total_time = (datetime.utcnow() - date_start_master).total_seconds()
         self.extra_valid_requested = bool(worker_files_ko['extra_valid'])
         self.integrity_check_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
-                                            'date_end_master': datetime.now().strftime(decimals_date_format)})
+                                            'date_end_master': datetime.utcnow().strftime(decimals_date_format)})
 
         # Get the total number of files that require some change.
         if not functools.reduce(operator.add, map(len, worker_files_ko.values())):
@@ -682,7 +682,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
             logger = self.task_loggers['Integrity sync']
             logger.info("Starting.")
-            self.integrity_sync_status.update({'tmp_date_start_master': datetime.now(), 'total_files': counts,
+            self.integrity_sync_status.update({'tmp_date_start_master': datetime.utcnow(), 'total_files': counts,
                                                'total_extra_valid': 0})
             logger.info("Files to create in worker: {} | Files to update in worker: {} | Files to delete in worker: {} "
                         "| Files to receive: {}".format(len(worker_files_ko['missing']), len(worker_files_ko['shared']),
@@ -733,7 +733,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 logger.debug("Finished sending files to worker.")
                 # Log 'Finished in' message only if there are no extra_valid files to sync.
                 if not self.extra_valid_requested:
-                    self.integrity_sync_status['date_end_master'] = datetime.now()
+                    self.integrity_sync_status['date_end_master'] = datetime.utcnow()
                     logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
                                                                self.integrity_sync_status['tmp_date_start_master'])
                                                               .total_seconds()))
@@ -961,13 +961,13 @@ class Master(server.AbstractServer):
         """
         file_integrity_logger = self.setup_task_logger("Local integrity")
         while True:
-            before = datetime.now()
+            before = datetime.utcnow()
             file_integrity_logger.info("Starting.")
             try:
                 self.integrity_control = wazuh.core.cluster.cluster.get_files_status()
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
-            file_integrity_logger.info(f"Finished in {(datetime.now() - before).total_seconds():.3f}s. Calculated "
+            file_integrity_logger.info(f"Finished in {(datetime.utcnow() - before).total_seconds():.3f}s. Calculated "
                                        f"metadata of {len(self.integrity_control)} files.")
 
             await asyncio.sleep(self.cluster_items['intervals']['master']['recalculate_integrity'])
@@ -997,7 +997,7 @@ class Master(server.AbstractServer):
                 Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name})['totalItems']
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(
-                    datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']
+                    datetime.utcfromtimestamp(workers_info[node_name]['status']['last_keep_alive']
                                            ).strftime(decimals_date_format))
 
         return {"n_connected_nodes": n_connected_nodes, "nodes": workers_info}
