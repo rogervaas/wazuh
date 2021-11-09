@@ -16,6 +16,7 @@
 #include "syscheck.h"
 #include "rootcheck/rootcheck.h"
 #include "db/include/db.hpp"
+#include "logging_helper.h"
 
 // Global variables
 syscheck_config syscheck;
@@ -74,10 +75,14 @@ void read_internal(int debug_level)
     return;
 }
 
+void testfunct(const char *log, const char *tag) {
+    merror("%s, %s", log, tag);
+}
+
 
 void fim_initialize() {
     // Create store data
-    syscheck.database = fim_db_init(syscheck.database_store);
+    syscheck.database = fim_db_init(syscheck.database_store, testfunct, loggingFunction);
 
     if (!syscheck.database) {
         merror_exit(FIM_CRITICAL_DATA_CREATE, "sqlite3 db");

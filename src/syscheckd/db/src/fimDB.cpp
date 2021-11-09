@@ -117,7 +117,7 @@ void FIMDB::loopRSync(std::unique_lock<std::mutex>& lock)
     {
         sync();
     }
-    m_rsyncHandler.reset(nullptr);
+    m_rsyncHandler = nullptr;
 }
 
 #ifdef WIN32
@@ -126,15 +126,15 @@ void FIMDB::init(unsigned int interval_synchronization,
                  unsigned int max_rows_registry,
                  send_data_callback_t callbackSync,
                  logging_callback_t callbackLog,
-                 std::unique_ptr<DBSync> dbsyncHandler,
-                 std::unique_ptr<RemoteSync> rsyncHanlder)
+                 std::shared_ptr_ptr<DBSync> dbsyncHandler,
+                 std::shared_ptr_ptr<RemoteSync> rsyncHanlder)
 #else
 void FIMDB::init(unsigned int interval_synchronization,
                  unsigned int max_rows_file,
                  send_data_callback_t callbackSync,
                  logging_callback_t callbackLog,
-                 std::unique_ptr<DBSync> dbsyncHandler,
-                 std::unique_ptr<RemoteSync> rsyncHanlder)
+                 std::shared_ptr<DBSync> dbsyncHandler,
+                 std::shared_ptr<RemoteSync> rsyncHanlder)
 #endif
 {
     std::function<void(const std::string&)> callbackSyncWrapper
@@ -158,8 +158,8 @@ void FIMDB::init(unsigned int interval_synchronization,
 #ifdef WIN32
     m_max_rows_registry = max_rows_registry;
 #endif
-    m_dbsyncHandler = std::move(dbsyncHandler);
-    m_rsyncHandler = std::move(rsyncHanlder);
+    m_dbsyncHandler = dbsyncHandler;
+    m_rsyncHandler = rsyncHanlder;
     m_syncMessageFunction = callbackSyncWrapper;
     m_loggingFunction = callbackLogWrapper;
     m_stopping = false;

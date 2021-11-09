@@ -12,6 +12,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "headers/logging_helper.h"
 
 
 #define fim_db_decode_registry_value_full_row(stmt) _fim_db_decode_registry_value(stmt, 11)
@@ -216,7 +217,7 @@ int fim_db_get_path_range(fdb_t* fim_sql, fim_type type, const char* start, cons
  *
  * @return FIM database struct.
  */
-fdb_t* fim_db_init(int storage);
+fdb_t* fim_db_init(int storage, void(*sync_callback)(const char* log, const char* tag), void(*loggFunction)(modules_log_level_t level, const char* log));
 
 /**
  * @brief Finalize stmt and close DB.

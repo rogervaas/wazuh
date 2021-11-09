@@ -58,15 +58,15 @@ class FIMDB
                   unsigned int max_rows_registry,
                   send_data_callback_t callbackSync,
                   logging_callback_t callbackLog,
-                  std::unique_ptr<DBSync> dbsyncHandler,
-                  std::unique_ptr<RemoteSync> rsyncHandler);
+                  std::shared_ptr<DBSync> dbsyncHandler,
+                  std::shared_ptr<RemoteSync> rsyncHandler);
 #else
         void init(unsigned int interval_synchronization,
                   unsigned int max_rows_file,
                   send_data_callback_t callbackSync,
                   logging_callback_t callbackLog,
-                  std::unique_ptr<DBSync> dbsyncHandler,
-                  std::unique_ptr<RemoteSync> rsyncHandler);
+                  std::shared_ptr<DBSync> dbsyncHandler,
+                  std::shared_ptr<RemoteSync> rsyncHandler);
 #endif
         /**
          * @brief Insert a given item into the database
@@ -126,8 +126,8 @@ class FIMDB
         unsigned int                                                            m_interval_synchronization;
         bool                                                                    m_stopping;
         std::condition_variable                                                 m_cv;
-        std::unique_ptr<DBSync>                                                 m_dbsyncHandler;
-        std::unique_ptr<RemoteSync>                                             m_rsyncHandler;
+        std::shared_ptr<DBSync>                                                 m_dbsyncHandler;
+        std::shared_ptr<RemoteSync>                                             m_rsyncHandler;
         std::function<void(const std::string&)>                                 m_syncMessageFunction;
         std::function<void(modules_log_level_t, const std::string&)>            m_loggingFunction;
 
