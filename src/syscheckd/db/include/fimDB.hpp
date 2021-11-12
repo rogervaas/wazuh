@@ -15,7 +15,9 @@
 #include "fimDB.hpp"
 #include "dbItem.hpp"
 #include "rsync.hpp"
-#include "shared.h"
+#include "commonDefs.hpp"
+#include <condition_variable>
+#include <mutex>
 
 enum class dbResult
 {
