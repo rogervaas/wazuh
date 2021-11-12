@@ -6,6 +6,12 @@
  * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
 
+#ifndef DB_STATEMENT_HPP
+#define DB_STATEMENT_HPP
+// #include "logging_helper.h"
+// typedef void((*log_callback_t)(const syscollector_log_level_t level, const char* log));
+typedef void((*fim_sync_callback_t)(const void* buffer));
+
 constexpr auto DATABASE_TEMP {"queue/fim/db/fim_dbsync.db"};
 
 constexpr auto CREATE_FILE_DB_STATEMENT
